@@ -11,6 +11,7 @@ const User = require("../models/User.js");
 async function getSummoner(req, res) {
   //extracción de los dos parámetros de la URL
   const { gameName, tagLine } = req.params;
+  const region = typeof req.query.region === "string" ? req.query.region : "EUW";
 
   if (!gameName || !tagLine) {
     //no debería pasar si la ruta está bien definida,
@@ -22,7 +23,7 @@ async function getSummoner(req, res) {
 
   try {
     //llamada a la función de servicio
-    const data = await getSummonerByPuuid(gameName, tagLine);
+    const data = await getSummonerByPuuid(gameName, tagLine, region);
 
     //respuesta exitosa
     return res.status(200).json(data);
@@ -75,7 +76,7 @@ async function getLeaderboard(req, res) {
 
 //usado en SummonerCard.jsx y riotService.js
 async function getSummonerStats(req, res) {
-  const { summonerName, gameName, tagLine } = req.query;
+  const { summonerName, gameName, tagLine, region } = req.query;
 
   if (!summonerName && (!gameName || !tagLine)) {
     return res.status(400).json({
@@ -83,14 +84,30 @@ async function getSummonerStats(req, res) {
     });
   }
 
+  const regionNorm =
+    typeof region === "string" && region.trim() ? region.trim() : "EUW";
+
   try {
-    const data = await getSummonerStatsByName(summonerName, gameName, tagLine);
+    const data = await getSummonerStatsByName(
+      summonerName,
+      gameName,
+      tagLine,
+      regionNorm
+    );
     return res.status(200).json(data);
   } catch (err) {
     console.error("Error al obtener datos del invocador:", err.message);
-    return res.status(500).json({
-      error: "Error al consultar Riot API",
-      details: err.message,
+    const fromService =
+      typeof err.statusCode === "number" ? err.statusCode : undefined;
+    const status =
+      fromService ??
+      (typeof err.response?.status === "number" ? err.response.status : 500);
+    return res.status(status).json({
+      error: err.message || "Error al consultar Riot API",
+      details:
+        err.response?.data?.message ||
+        err.response?.statusText ||
+        err.message,
     });
   }
 }
