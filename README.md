@@ -48,7 +48,8 @@ Incluye autenticación, gestión de usuarios, integración con Riot Games API, s
 ### Comunicación
 
 - **Socket.io** - WebSockets para tiempo real
-- **nodemailer** - Cliente SMTP para el envío de correos (Zoho Mail)
+- **nodemailer** - Cliente SMTP para el envío de correos (Zoho Mail en local)
+- **axios** - Cliente HTTP (Riot API y API HTTPS de Brevo en producción)
 
 ### Validación y Utilidades
 
@@ -189,7 +190,11 @@ CLOUDINARY_CLOUD_NAME=tu_cloud_name
 CLOUDINARY_API_KEY=tu_api_key
 CLOUDINARY_API_SECRET=tu_api_secret
 
-# Zoho Mail SMTP (envío de correos)
+# Transporte de correo
+# MAIL_TRANSPORT: 'smtp' | 'brevo' (por defecto: brevo en producción, smtp en el resto)
+# MAIL_TRANSPORT=brevo
+
+# Zoho Mail SMTP (transporte en desarrollo/local)
 SMTP_HOST=smtp.zoho.eu
 SMTP_PORT=465
 SMTP_SECURE=true
@@ -197,6 +202,9 @@ SMTP_USER=lolmatch@tudominio.com
 SMTP_PASS=tu_app_password_de_zoho
 MAIL_FROM_NAME=LOL MATCH
 MAIL_FROM_EMAIL=lolmatch@tudominio.com
+
+# Brevo API HTTPS (transporte en producción: Render free bloquea puertos SMTP)
+BREVO_API_KEY=tu_brevo_api_key
 
 # Frontend URLs (para CORS y enlaces en correos)
 FRONTEND_URL_DEV=http://localhost:5173

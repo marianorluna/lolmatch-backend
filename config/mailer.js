@@ -1,49 +1,55 @@
-const nodemailer = require("nodemailer");
+const { createSmtpStrategy } = require("./mailStrategies/smtpStrategy.js");
+const { createBrevoStrategy } = require("./mailStrategies/brevoStrategy.js");
 
-//único punto que conoce el proveedor SMTP (Zoho Mail)
-//los utils de email solo consumen sendMail, sin conocer el transporte concreto
-const {
-  SMTP_HOST,
-  SMTP_PORT,
-  SMTP_SECURE,
-  SMTP_USER,
-  SMTP_PASS,
-  MAIL_FROM_NAME,
-  MAIL_FROM_EMAIL,
-} = process.env;
+//fachada de correo: los utils solo consumen sendMail/verify sin conocer el proveedor
+//selecciona la estrategia (Strategy/Composition) según MAIL_TRANSPORT o el entorno
 
-if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-  console.error(
-    "❌ [mailer] Faltan variables de entorno SMTP (SMTP_HOST, SMTP_USER, SMTP_PASS)"
-  );
-}
+const { MAIL_FROM_NAME, MAIL_FROM_EMAIL, SMTP_USER } = process.env;
 
-//transporter de nodemailer para Zoho
-const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: Number(SMTP_PORT) || 465,
-  secure: SMTP_SECURE === "true", // true para puerto 465 (SSL)
-  auth: {
-    user: SMTP_USER,
-    pass: SMTP_PASS,
-  },
-});
+const senderEmail = MAIL_FROM_EMAIL || SMTP_USER;
+const senderName = MAIL_FROM_NAME || "LOL MATCH";
+const MAIL_FROM = `"${senderName}" <${senderEmail}>`;
 
-//remitente por defecto en formato "Nombre" <email>
-const MAIL_FROM = `"${MAIL_FROM_NAME || "LOL MATCH"}" <${
-  MAIL_FROM_EMAIL || SMTP_USER
-}>`;
+//resuelve qué transporte usar:
+//- MAIL_TRANSPORT explícito (smtp|brevo) tiene prioridad
+//- por defecto: brevo en producción (Render bloquea SMTP), smtp en el resto
+const resolveTransport = () =>
+  (process.env.MAIL_TRANSPORT || "").trim().toLowerCase() ||
+  (process.env.NODE_ENV === "production" ? "brevo" : "smtp");
 
-//helper que envía un correo usando el transporter de Zoho
-//attachments es opcional (array de objetos de nodemailer)
-const sendMail = ({ to, subject, html, text, attachments }) =>
-  transporter.sendMail({
+const createStrategy = () => {
+  const transport = resolveTransport();
+
+  if (transport === "brevo") {
+    return createBrevoStrategy({
+      apiKey: process.env.BREVO_API_KEY,
+      sender: { name: senderName, email: senderEmail },
+    });
+  }
+
+  return createSmtpStrategy({
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    secure: process.env.SMTP_SECURE,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
     from: MAIL_FROM,
-    to,
-    subject,
-    html,
-    text,
-    attachments,
   });
+};
 
-module.exports = { transporter, sendMail, MAIL_FROM };
+const strategy = createStrategy();
+
+//helper común: envía un correo delegando en la estrategia activa
+const sendMail = (message) => strategy.sendMail(message);
+
+//verifica la conexión/credenciales de la estrategia activa
+const verify = () => strategy.verify();
+
+module.exports = {
+  sendMail,
+  verify,
+  strategy,
+  MAIL_FROM,
+  //expuesto solo cuando la estrategia activa es SMTP
+  transporter: strategy.transporter,
+};

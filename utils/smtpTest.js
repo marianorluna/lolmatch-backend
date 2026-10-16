@@ -1,24 +1,26 @@
 require("dotenv").config();
-const { transporter, sendMail } = require("../config/mailer.js");
+const { verify, sendMail, strategy } = require("../config/mailer.js");
 
 //usar con: node utils/smtpTest.js
-//verifica la conexión SMTP con Zoho y envía un correo de prueba
-const testSmtp = async () => {
+//verifica la estrategia de correo activa (SMTP o Brevo) y envía un correo de prueba
+const testMail = async () => {
   try {
-    await transporter.verify();
-    console.log("✅ Conexión SMTP con Zoho verificada");
+    console.log(`📮 Transporte activo: ${strategy.name}`);
+
+    await verify();
+    console.log("✅ Conexión/credenciales verificadas");
 
     await sendMail({
       to: "marianorluna@gmail.com", //reemplazar con un correo real
       subject: "Prueba SMTP",
-      text: "Este es un correo de prueba desde Zoho SMTP.",
-      html: "<p>Este es un correo de prueba desde Zoho SMTP.</p>",
+      text: "Este es un correo de prueba desde LOL MATCH.",
+      html: "<p>Este es un correo de prueba desde LOL MATCH.</p>",
     });
 
     console.log("✅ Correo enviado correctamente");
   } catch (err) {
-    console.error("❌ Error al enviar correo:", err.message);
+    console.error("❌ Error al enviar correo:", err.response?.data || err.message);
   }
 };
 
-testSmtp();
+testMail();

@@ -435,7 +435,14 @@ Estado del chat:
 - `multer-storage-cloudinary` para almacenamiento directo
 - Transformaciones automáticas (resize, format)
 
-### Zoho Mail (SMTP)
+### Correo (Strategy)
+
+El envío de correo se centraliza en `config/mailer.js`, una fachada que selecciona la estrategia de transporte según `MAIL_TRANSPORT` (o el entorno):
+
+- **`smtp`** (`config/mailStrategies/smtpStrategy.js`): Zoho Mail vía nodemailer. Se usa en desarrollo/local.
+- **`brevo`** (`config/mailStrategies/brevoStrategy.js`): API HTTPS de Brevo (puerto 443). Se usa en producción porque Render free bloquea los puertos SMTP 25/465/587.
+
+Los utils de `utils/send*.js` solo consumen `sendMail(...)`/`verify()` y no conocen el proveedor concreto.
 
 **Uso:**
 
@@ -452,8 +459,6 @@ Estado del chat:
 - Recuperación de contraseña y cambio de contraseña
 - Código 2FA
 - Notificaciones de seguridad
-
-El transporte SMTP se centraliza en `config/mailer.js` (nodemailer); los utils de `utils/send*.js` consumen el helper `sendMail` y no conocen el proveedor concreto.
 
 ## 🔐 Seguridad
 
