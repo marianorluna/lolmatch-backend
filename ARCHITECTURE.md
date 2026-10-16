@@ -101,9 +101,10 @@ Request → CORS → JSON Parser → Cookie Parser → Auth Middleware → Route
 
 **Middlewares principales:**
 
-- **CORS Dinámico**: Control de acceso cross-origin con soporte multi-dominio
-  - Permite dominios explícitos (localhost, netlify.app, lolmatch.online)
-  - Permite automáticamente subdominios de dominios base
+- **CORS Dinámico**: Control de acceso cross-origin
+  - Permite dominios explícitos (localhost, lol-match.netlify.app)
+  - Permite automáticamente subdominios de netlify.app
+  - Validación centralizada reutilizada por Express y Socket.io
   - Configuración flexible para agregar nuevos dominios
 - **JSON Parser**: Parseo de bodies JSON
 - **Cookie Parser**: Lectura de cookies
@@ -120,16 +121,8 @@ Socket.io se integra con Express en el mismo servidor HTTP con CORS dinámico:
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: function (origin, callback) {
-      // CORS dinámico que permite múltiples dominios y subdominios
-      if (!origin || allowedOrigins.includes(origin) || 
-          origin.endsWith('.netlify.app') || 
-          origin.endsWith('.lolmatch.online')) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    // reutiliza el mismo callback corsOrigin que Express (una única fuente de verdad)
+    origin: corsOrigin,
     credentials: true
   }
 });
@@ -442,7 +435,7 @@ Estado del chat:
 - `multer-storage-cloudinary` para almacenamiento directo
 - Transformaciones automáticas (resize, format)
 
-### Brevo (Sendinblue)
+### Zoho Mail (SMTP)
 
 **Uso:**
 
@@ -450,14 +443,17 @@ Estado del chat:
 - Emails de recuperación de contraseña
 - Notificaciones de seguridad
 - Códigos de autenticación de dos factores
+- Export de datos y confirmación de borrado de cuenta
 
 **Templates:**
 
 - Email de bienvenida
 - Verificación de cuenta
-- Recuperación de contraseña
+- Recuperación de contraseña y cambio de contraseña
 - Código 2FA
 - Notificaciones de seguridad
+
+El transporte SMTP se centraliza en `config/mailer.js` (nodemailer); los utils de `utils/send*.js` consumen el helper `sendMail` y no conocen el proveedor concreto.
 
 ## 🔐 Seguridad
 
@@ -467,10 +463,10 @@ Estado del chat:
 - **Expiración**: Tokens con tiempo de vida limitado (7 días)
 - **Refresh**: Renovación automática de tokens
 - **Sesiones**: Gestión de múltiples sesiones por usuario
-- **Soporte Multi-Dominio**: 
+- **Cookies Cross-Origin**: 
   - Cookies configuradas con `sameSite: "None"` y `secure: true` para cross-origin
-  - Logout limpia cookies en múltiples dominios (netlify.app y lolmatch.online)
-  - CORS dinámico permite transición transparente entre dominios
+  - Logout limpia la cookie del dominio actual
+  - CORS dinámico permite la conexión desde lol-match.netlify.app
 
 ### Validación
 

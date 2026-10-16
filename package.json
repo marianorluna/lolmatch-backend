@@ -26,7 +26,6 @@
   },
   "homepage": "https://github.com/FSD0625ESP/TFM-rojo-backend#readme",
   "dependencies": {
-    "@getbrevo/brevo": "^3.0.1",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.8.0",

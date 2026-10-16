@@ -1,25 +1,10 @@
-const axios = require("axios");
-const Brevo = require("@getbrevo/brevo");
+const { sendMail } = require("../config/mailer.js");
 const generateToken = require("./generateToken.js");
 
 const sendDeleteAccountEmail = async (email, userId) => {
-  const {
-    EMAILOCTOPUS_API_KEY,
-    EMAILOCTOPUS_LIST_ID,
-    EMAILOCTOPUS_FROM_NAME,
-    EMAILOCTOPUS_FROM_EMAIL,
-    BREVO_API_KEY,
-    NODE_ENV,
-    FRONTEND_URL_PROD,
-    FRONTEND_URL_DEV,
-  } = process.env;
+  const { NODE_ENV, FRONTEND_URL_PROD, FRONTEND_URL_DEV } = process.env;
 
-  if (
-    !EMAILOCTOPUS_API_KEY ||
-    !EMAILOCTOPUS_LIST_ID ||
-    !EMAILOCTOPUS_FROM_EMAIL ||
-    !BREVO_API_KEY
-  ) {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
     throw new Error("Faltan variables de entorno necesarias");
   }
 
@@ -28,40 +13,7 @@ const sendDeleteAccountEmail = async (email, userId) => {
   const token = generateToken({ id: userId, action: "deleteAccount" }, "24h");
   const deleteLink = `${baseUrl}/delete-account?token=${token}`;
 
-  //1.agregar contacto a EmailOctopus
-  try {
-    await axios.put(
-      `https://api.emailoctopus.com/lists/${EMAILOCTOPUS_LIST_ID}/contacts`,
-      {
-        email_address: email,
-        status: "subscribed",
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${EMAILOCTOPUS_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    console.log("✅ Contacto agregado a EmailOctopus");
-  } catch (err) {
-    console.error("❌ Error al agregar contacto a EmailOctopus:", err.message);
-    //no detenemos el flujo si esto falla
-  }
-
-  //2.enviar correo de eliminación de cuenta con Brevo API
-  try {
-    const apiInstance = new Brevo.TransactionalEmailsApi();
-    apiInstance.setApiKey(
-      Brevo.TransactionalEmailsApiApiKeys.apiKey,
-      BREVO_API_KEY
-    );
-
-    const sendSmtpEmail = {
-      sender: { name: EMAILOCTOPUS_FROM_NAME, email: EMAILOCTOPUS_FROM_EMAIL },
-      to: [{ email }],
-      subject: "Account Deletion Confirmation",
-      htmlContent: `
+  const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #dc2626;">Account Deletion Confirmation</h2>
           <p>Hello,</p>
@@ -88,17 +40,22 @@ const sendDeleteAccountEmail = async (email, userId) => {
           <p>If you did not request this deletion, you can safely ignore this message. Your account will remain active.</p>
           <p>Thank you,<br>The LOL MATCH Team</p>
         </div>
-      `,
-    };
+      `;
 
-    await apiInstance.sendTransacEmail(sendSmtpEmail);
+  //envío del correo de eliminación de cuenta por SMTP
+  try {
+    await sendMail({
+      to: email,
+      subject: "Account Deletion Confirmation",
+      html,
+    });
 
-    console.log("📧 Email de eliminación de cuenta enviado vía Brevo API");
+    console.log("📧 Email de eliminación de cuenta enviado por SMTP");
     console.log(
       isProduction ? "" : `🔗 Enlace de eliminación: ${deleteLink}`
     );
   } catch (err) {
-    console.error("❌ Error al enviar correo con Brevo:", err.message);
+    console.error("❌ Error al enviar correo por SMTP:", err.message);
     throw new Error("No se pudo enviar el correo de confirmación");
   }
 
@@ -106,4 +63,3 @@ const sendDeleteAccountEmail = async (email, userId) => {
 };
 
 module.exports = sendDeleteAccountEmail;
-

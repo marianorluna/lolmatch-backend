@@ -1,14 +1,8 @@
-const Brevo = require("@getbrevo/brevo");
+const { sendMail } = require("../config/mailer.js");
 
 //envía un correo con un archivo JSON adjunto que contiene todos los datos del usuario
 const sendDataExportEmail = async (email, userName, userData) => {
-    const {
-        EMAILOCTOPUS_FROM_NAME,
-        EMAILOCTOPUS_FROM_EMAIL,
-        BREVO_API_KEY,
-    } = process.env;
-
-    if (!EMAILOCTOPUS_FROM_EMAIL || !BREVO_API_KEY) {
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
         throw new Error("Missing required environment variables");
     }
 
@@ -16,24 +10,12 @@ const sendDataExportEmail = async (email, userName, userData) => {
         // Convertir los datos del usuario a JSON
         const jsonData = JSON.stringify(userData, null, 2);
         const jsonBuffer = Buffer.from(jsonData, "utf-8");
-        const jsonBase64 = jsonBuffer.toString("base64");
 
-        // Nombre del archivo con fecha
-        // Brevo no acepta archivos .json, usamos .txt en su lugar
+        // Nombre del archivo con fecha (se adjunta como .txt con contenido JSON)
         const date = new Date().toISOString().split("T")[0];
         const fileName = `lol-match-data-export-${date}.txt`;
 
-        const apiInstance = new Brevo.TransactionalEmailsApi();
-        apiInstance.setApiKey(
-            Brevo.TransactionalEmailsApiApiKeys.apiKey,
-            BREVO_API_KEY
-        );
-
-        const sendSmtpEmail = {
-            sender: { name: EMAILOCTOPUS_FROM_NAME, email: EMAILOCTOPUS_FROM_EMAIL },
-            to: [{ email }],
-            subject: "Your Data Export - LOL MATCH",
-            htmlContent: `
+        const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #333;">Your Data Export</h2>
           <p>Hello ${userName},</p>
@@ -58,21 +40,25 @@ const sendDataExportEmail = async (email, userName, userData) => {
           <p>If you did not request this data export, please contact our support team immediately.</p>
           <p>Thank you,<br>The LOL MATCH Team</p>
         </div>
-      `,
-            attachment: [
+      `;
+
+        await sendMail({
+            to: email,
+            subject: "Your Data Export - LOL MATCH",
+            html,
+            // nodemailer acepta un Buffer como contenido del adjunto
+            attachments: [
                 {
-                    name: fileName,
-                    content: jsonBase64,
+                    filename: fileName,
+                    content: jsonBuffer,
                     contentType: "text/plain",
                 },
             ],
-        };
+        });
 
-        await apiInstance.sendTransacEmail(sendSmtpEmail);
-
-        console.log("📧 Data export email sent via Brevo API");
+        console.log("📧 Data export email sent via SMTP");
     } catch (err) {
-        console.error("❌ Error sending data export email with Brevo:", err);
+        console.error("❌ Error sending data export email via SMTP:", err);
         console.error("❌ Error details:", err.response?.data || err.message);
         throw new Error(`Could not send data export email: ${err.message}`);
     }
@@ -81,4 +67,3 @@ const sendDataExportEmail = async (email, userName, userData) => {
 };
 
 module.exports = sendDataExportEmail;
-

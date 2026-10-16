@@ -1,25 +1,10 @@
-const axios = require("axios");
-const Brevo = require("@getbrevo/brevo");
+const { sendMail } = require("../config/mailer.js");
 const generateToken = require("./generateToken.js");
 
 const sendRecoveryEmail = async (email, userId) => {
-  const {
-    EMAILOCTOPUS_API_KEY,
-    EMAILOCTOPUS_LIST_ID,
-    EMAILOCTOPUS_FROM_NAME,
-    EMAILOCTOPUS_FROM_EMAIL,
-    BREVO_API_KEY,
-    NODE_ENV,
-    FRONTEND_URL_PROD,
-    FRONTEND_URL_DEV,
-  } = process.env;
+  const { NODE_ENV, FRONTEND_URL_PROD, FRONTEND_URL_DEV } = process.env;
 
-  if (
-    !EMAILOCTOPUS_API_KEY ||
-    !EMAILOCTOPUS_LIST_ID ||
-    !EMAILOCTOPUS_FROM_EMAIL ||
-    !BREVO_API_KEY
-  ) {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
     throw new Error("Faltan variables de entorno necesarias");
   }
 
@@ -28,40 +13,7 @@ const sendRecoveryEmail = async (email, userId) => {
   const token = generateToken({ id: userId }, "15m");
   const resetLink = `${baseUrl}/reset-password?token=${token}`;
 
-  //1.agregar contacto a EmailOctopus
-  try {
-    await axios.put(
-      `https://api.emailoctopus.com/lists/${EMAILOCTOPUS_LIST_ID}/contacts`,
-      {
-        email_address: email,
-        status: "subscribed",
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${EMAILOCTOPUS_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    console.log("✅ Contacto agregado a EmailOctopus");
-  } catch (err) {
-    console.error("❌ Error al agregar contacto a EmailOctopus:", err.message);
-    //no detenemos el flujo si esto falla
-  }
-
-  //2.enviar correo de recuperación con Brevo API
-  try {
-    const apiInstance = new Brevo.TransactionalEmailsApi();
-    apiInstance.setApiKey(
-      Brevo.TransactionalEmailsApiApiKeys.apiKey,
-      BREVO_API_KEY
-    );
-
-    const sendSmtpEmail = {
-      sender: { name: EMAILOCTOPUS_FROM_NAME, email: EMAILOCTOPUS_FROM_EMAIL },
-      to: [{ email }],
-      subject: "Reset Your Password",
-      htmlContent: `
+  const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #333;">Reset Your Password</h2>
           <p>Hello,</p>
@@ -81,17 +33,22 @@ const sendRecoveryEmail = async (email, userId) => {
           <p>If you did not request this change, you can safely ignore this message.</p>
           <p>Thank you,<br>The LOL MATCH Team</p>
         </div>
-      `,
-    };
+      `;
 
-    await apiInstance.sendTransacEmail(sendSmtpEmail);
+  //envío del correo de recuperación por SMTP
+  try {
+    await sendMail({
+      to: email,
+      subject: "Reset Your Password",
+      html,
+    });
 
-    console.log("📧 Email enviado vía Brevo API");
+    console.log("📧 Email enviado por SMTP");
     console.log(
       isProduction ? "" : `🔗 Enlace de restablecimiento: ${resetLink}`
     );
   } catch (err) {
-    console.error("❌ Error al enviar correo con Brevo:", err.message);
+    console.error("❌ Error al enviar correo por SMTP:", err.message);
     throw new Error("No se pudo enviar el correo de recuperación");
   }
 

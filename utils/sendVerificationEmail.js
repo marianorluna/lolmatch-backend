@@ -1,17 +1,9 @@
-const Brevo = require("@getbrevo/brevo");
+const { sendMail } = require("../config/mailer.js");
 const generateToken = require("./generateToken.js");
 
 //envía un correo con un enlace que contiene un token para verificar la cuenta
 const sendVerificationEmail = async (email, userId) => {
-  const {
-    EMAILOCTOPUS_FROM_NAME,
-    EMAILOCTOPUS_FROM_EMAIL,
-    BREVO_API_KEY,
-    NODE_ENV,
-    FRONTEND_URL_PROD,
-    FRONTEND_URL_DEV,
-    JWT_SECRET,
-  } = process.env;
+  const { NODE_ENV, FRONTEND_URL_PROD, FRONTEND_URL_DEV } = process.env;
 
   const isProduction = NODE_ENV === "production";
   const baseUrl = isProduction ? FRONTEND_URL_PROD : FRONTEND_URL_DEV;
@@ -20,19 +12,7 @@ const sendVerificationEmail = async (email, userId) => {
   const token = generateToken({ id: userId }, "24h");
   const verifyLink = `${baseUrl}/verify-account?token=${token}`;
 
-  //configuración de la instancia de Brevo API
-  const apiInstance = new Brevo.TransactionalEmailsApi();
-  apiInstance.setApiKey(
-    Brevo.TransactionalEmailsApiApiKeys.apiKey,
-    BREVO_API_KEY
-  );
-
-  //estructura del correo a enviar
-  const sendSmtpEmail = {
-    sender: { name: EMAILOCTOPUS_FROM_NAME, email: EMAILOCTOPUS_FROM_EMAIL },
-    to: [{ email }],
-    subject: "Verify Your Account",
-    htmlContent: `
+  const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2 style="color: #333;">Verify Your Account</h2>
         <p>Hello,</p>
@@ -52,14 +32,17 @@ const sendVerificationEmail = async (email, userId) => {
         <p>Welcome to LOL MATCH 🎮</p>
         <p>Thank you,<br>The LOL MATCH Team</p>
       </div>
-    `,
-  };
+    `;
 
-  //envío del correo usando la API de Brevo
-  await apiInstance.sendTransacEmail(sendSmtpEmail);
+  //envío del correo usando el transporter SMTP
+  await sendMail({
+    to: email,
+    subject: "Verify Your Account",
+    html,
+  });
 
   console.log("🔗 Enlace:", verifyLink);
-  console.log("📧 Email de verificación enviado con Brevo API");
+  console.log("📧 Email de verificación enviado por SMTP");
 };
 
 module.exports = sendVerificationEmail;

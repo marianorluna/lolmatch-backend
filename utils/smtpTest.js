@@ -1,25 +1,24 @@
 require("dotenv").config();
-const Brevo = require("@getbrevo/brevo");
+const { transporter, sendMail } = require("../config/mailer.js");
 
-//usar con: node smtpTest.js
-//configuración de la instancia de Brevo API
-const apiInstance = new Brevo.TransactionalEmailsApi();
-apiInstance.setApiKey(
-  Brevo.TransactionalEmailsApiApiKeys.apiKey,
-  process.env.BREVO_API_KEY
-);
+//usar con: node utils/smtpTest.js
+//verifica la conexión SMTP con Zoho y envía un correo de prueba
+const testSmtp = async () => {
+  try {
+    await transporter.verify();
+    console.log("✅ Conexión SMTP con Zoho verificada");
 
-//envío de correo de prueba usando Brevo API
-apiInstance
-  .sendTransacEmail({
-    sender: { name: "LOL MATCH", email: "info@lolmatch.online" },
-    to: [{ email: "marianorluna@gmail.com" }], //reemplazar con un correo real
-    subject: "Prueba SMTP",
-    textContent: "Este es un correo de prueba desde Brevo API.",
-  })
-  .then(() => {
+    await sendMail({
+      to: "marianorluna@gmail.com", //reemplazar con un correo real
+      subject: "Prueba SMTP",
+      text: "Este es un correo de prueba desde Zoho SMTP.",
+      html: "<p>Este es un correo de prueba desde Zoho SMTP.</p>",
+    });
+
     console.log("✅ Correo enviado correctamente");
-  })
-  .catch((err) => {
+  } catch (err) {
     console.error("❌ Error al enviar correo:", err.message);
-  });
+  }
+};
+
+testSmtp();

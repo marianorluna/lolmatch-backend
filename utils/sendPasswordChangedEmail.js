@@ -1,30 +1,14 @@
-const Brevo = require("@getbrevo/brevo");
+const { sendMail } = require("../config/mailer.js");
 
 const sendPasswordChangedEmail = async (email, userName) => {
-  const {
-    BREVO_API_KEY,
-    EMAILOCTOPUS_FROM_NAME,
-    EMAILOCTOPUS_FROM_EMAIL,
-  } = process.env;
-
-  if (!BREVO_API_KEY || !EMAILOCTOPUS_FROM_EMAIL) {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.error("❌ Faltan variables de entorno necesarias para enviar correo");
     return;
   }
 
-  //enviar correo de notificación de cambio de contraseña con Brevo API
+  //enviar correo de notificación de cambio de contraseña por SMTP
   try {
-    const apiInstance = new Brevo.TransactionalEmailsApi();
-    apiInstance.setApiKey(
-      Brevo.TransactionalEmailsApiApiKeys.apiKey,
-      BREVO_API_KEY
-    );
-
-    const sendSmtpEmail = {
-      sender: { name: EMAILOCTOPUS_FROM_NAME, email: EMAILOCTOPUS_FROM_EMAIL },
-      to: [{ email }],
-      subject: "Password Changed Successfully",
-      htmlContent: `
+    const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #333;">Password Changed Successfully</h2>
           <p>Hello ${userName || "User"},</p>
@@ -45,17 +29,19 @@ const sendPasswordChangedEmail = async (email, userName) => {
           <p>If you have any questions or concerns, please don't hesitate to contact our support team.</p>
           <p>Thank you,<br>The LOL MATCH Team</p>
         </div>
-      `,
-    };
+      `;
 
-    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    await sendMail({
+      to: email,
+      subject: "Password Changed Successfully",
+      html,
+    });
 
-    console.log("📧 Email de cambio de contraseña enviado vía Brevo API");
+    console.log("📧 Email de cambio de contraseña enviado por SMTP");
   } catch (err) {
-    console.error("❌ Error al enviar correo de cambio de contraseña con Brevo:", err.message);
+    console.error("❌ Error al enviar correo de cambio de contraseña por SMTP:", err.message);
     //no lanzamos el error para no interrumpir el flujo de cambio de contraseña
   }
 };
 
 module.exports = sendPasswordChangedEmail;
-

@@ -1,29 +1,13 @@
-const Brevo = require("@getbrevo/brevo");
+const { sendMail } = require("../config/mailer.js");
 
 //envía código de autenticación de dos factores por email
 const sendTwoFactorCode = async (email, code) => {
-  const {
-    EMAILOCTOPUS_FROM_NAME,
-    EMAILOCTOPUS_FROM_EMAIL,
-    BREVO_API_KEY,
-  } = process.env;
-
-  if (!EMAILOCTOPUS_FROM_EMAIL || !BREVO_API_KEY) {
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
     throw new Error("Faltan variables de entorno necesarias");
   }
 
   try {
-    const apiInstance = new Brevo.TransactionalEmailsApi();
-    apiInstance.setApiKey(
-      Brevo.TransactionalEmailsApiApiKeys.apiKey,
-      BREVO_API_KEY
-    );
-
-    const sendSmtpEmail = {
-      sender: { name: EMAILOCTOPUS_FROM_NAME, email: EMAILOCTOPUS_FROM_EMAIL },
-      to: [{ email }],
-      subject: "Verification Code - Two-Factor Authentication",
-      htmlContent: `
+    const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h2 style="color: #333;">Verification Code</h2>
           <p>Hello,</p>
@@ -37,10 +21,14 @@ const sendTwoFactorCode = async (email, code) => {
           <p>If you did not request this code, ignore this message or contact support.</p>
           <p>Thank you,<br>The LOL MATCH Team</p>
         </div>
-      `,
-    };
+      `;
 
-    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    await sendMail({
+      to: email,
+      subject: "Verification Code - Two-Factor Authentication",
+      html,
+    });
+
     console.log("📧 Código 2FA enviado por email");
   } catch (err) {
     console.error("❌ Error al enviar código 2FA:", err.message);
@@ -51,4 +39,3 @@ const sendTwoFactorCode = async (email, code) => {
 };
 
 module.exports = sendTwoFactorCode;
-

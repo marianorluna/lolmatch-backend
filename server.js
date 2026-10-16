@@ -23,34 +23,33 @@ const server = http.createServer(app);
 const allowedOrigins = [
   "http://localhost:5173",
   "https://lol-match.netlify.app",
-  "https://lolmatch.online",
-  "https://www.lolmatch.online", // Si usas www también
 ];
 
+//valida si un origin puede conectarse (lista explícita + subdominios de netlify.app)
+const isOriginAllowed = (origin) => {
+  //permitir requests sin origin (como Postman, mobile apps, o requests del mismo servidor)
+  if (!origin) return true;
+
+  //verificar si el origin está en la lista permitida
+  if (allowedOrigins.indexOf(origin) !== -1) return true;
+
+  //permitir subdominios de netlify.app para flexibilidad (previews, deploys, etc.)
+  return origin.endsWith(".netlify.app");
+};
+
+//callback de CORS reutilizado por Express y Socket.io (una única fuente de verdad)
+const corsOrigin = (origin, callback) => {
+  if (isOriginAllowed(origin)) {
+    callback(null, true);
+  } else {
+    callback(new Error("Not allowed by CORS"));
+  }
+};
+
 //cors dinámico que acepta dominios dentro de allowedOrigins y sus subdominios
-//esto permite que funcione tanto con lol-match.netlify.app como con lolmatch.online
 app.use(
   cors({
-    origin: function (origin, callback) {
-      //permitir requests sin origin (como Postman, mobile apps, o requests del mismo servidor)
-      if (!origin) return callback(null, true);
-
-      //verificar si el origin está en la lista permitida
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        //también permitir si es un subdominio de netlify.app o lolmatch.online
-        //esto permite flexibilidad para futuros subdominios
-        const isNetlifySubdomain = origin.endsWith('.netlify.app');
-        const isLolmatchSubdomain = origin.endsWith('.lolmatch.online') || origin === 'https://lolmatch.online';
-
-        if (isNetlifySubdomain || isLolmatchSubdomain) {
-          callback(null, true);
-        } else {
-          callback(new Error('Not allowed by CORS'));
-        }
-      }
-    },
+    origin: corsOrigin,
     credentials: true, //permite cookies entre backend y frontend
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -69,25 +68,7 @@ app.use(express.static(__dirname));
 //socket.io básico para el chat con CORS dinámico
 const io = new Server(server, {
   cors: {
-    origin: function (origin, callback) {
-      //permitir requests sin origin
-      if (!origin) return callback(null, true);
-
-      //verificar si el origin está en la lista permitida
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        //permitir subdominios de netlify.app y lolmatch.online
-        const isNetlifySubdomain = origin.endsWith('.netlify.app');
-        const isLolmatchSubdomain = origin.endsWith('.lolmatch.online') || origin === 'https://lolmatch.online';
-
-        if (isNetlifySubdomain || isLolmatchSubdomain) {
-          callback(null, true);
-        } else {
-          callback(new Error('Not allowed by CORS'));
-        }
-      }
-    },
+    origin: corsOrigin,
     credentials: true
   },
   path: "/socket.io",

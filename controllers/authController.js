@@ -210,11 +210,6 @@ const logout = async (req, res) => {
   //limpiar cookie sin especificar dominio (funciona para el dominio actual)
   res.clearCookie("authToken", cookieOptions);
 
-  //también intentar limpiar con dominios específicos para soporte multi-dominio
-  //esto asegura que las cookies se limpien incluso si el usuario cambió de dominio
-  res.clearCookie("authToken", { ...cookieOptions, domain: ".netlify.app" });
-  res.clearCookie("authToken", { ...cookieOptions, domain: ".lolmatch.online" });
-
   res.status(200).json({ message: "Logged out successfully ✅" });
 };
 

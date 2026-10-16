@@ -48,8 +48,7 @@ Incluye autenticación, gestión de usuarios, integración con Riot Games API, s
 ### Comunicación
 
 - **Socket.io** - WebSockets para tiempo real
-- **@getbrevo/brevo** - Servicio de email (Brevo/Sendinblue)
-- **nodemailer** - Cliente SMTP alternativo
+- **nodemailer** - Cliente SMTP para el envío de correos (Zoho Mail)
 
 ### Validación y Utilidades
 
@@ -147,7 +146,7 @@ TFM-rojo-backend/
 - MongoDB (local o MongoDB Atlas)
 - Cuenta de Riot Games API (opcional)
 - Cuenta de Cloudinary
-- Cuenta de Brevo/Sendinblue para emails
+- Cuenta de correo en Zoho Mail con App Password (para emails)
 
 ### Pasos de Instalación
 
@@ -190,12 +189,18 @@ CLOUDINARY_CLOUD_NAME=tu_cloud_name
 CLOUDINARY_API_KEY=tu_api_key
 CLOUDINARY_API_SECRET=tu_api_secret
 
-# Email (Brevo/Sendinblue)
-BREVO_API_KEY=tu_brevo_api_key
-EMAIL_FROM=noreply@lolmatch.com
+# Zoho Mail SMTP (envío de correos)
+SMTP_HOST=smtp.zoho.eu
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=lolmatch@tudominio.com
+SMTP_PASS=tu_app_password_de_zoho
+MAIL_FROM_NAME=LOL MATCH
+MAIL_FROM_EMAIL=lolmatch@tudominio.com
 
-# Frontend URL (para CORS)
-FRONTEND_URL=http://localhost:5173
+# Frontend URLs (para CORS y enlaces en correos)
+FRONTEND_URL_DEV=http://localhost:5173
+FRONTEND_URL_PROD=https://lol-match.netlify.app
 ```
 
 4. **Iniciar el servidor**
@@ -225,25 +230,22 @@ La aplicación soporta MongoDB local y MongoDB Atlas. La conexión se selecciona
 
 ### CORS
 
-El backend implementa **CORS dinámico** que permite múltiples dominios y sus subdominios:
+El backend implementa **CORS dinámico** que permite dominios explícitos y sus subdominios:
 
 ```javascript
 // Dominios permitidos explícitamente
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://lol-match.netlify.app",
-  "https://lolmatch.online",
-  "https://www.lolmatch.online"
+  "https://lol-match.netlify.app"
 ];
 
 // CORS dinámico que también permite:
 // - Cualquier subdominio de .netlify.app
-// - Cualquier subdominio de .lolmatch.online
 ```
 
 **Características:**
-- Soporte multi-dominio: Funciona con ambos dominios (netlify.app y lolmatch.online)
-- Subdominios automáticos: Permite cualquier subdominio de los dominios base
+- Dominio único: Funciona con el frontend en lol-match.netlify.app
+- Subdominios automáticos: Permite cualquier subdominio de netlify.app
 - Credentials habilitados: Permite cookies entre dominios (sameSite: "None")
 - Configuración flexible: Fácil agregar nuevos dominios sin modificar la lógica
 
